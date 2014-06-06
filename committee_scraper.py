@@ -54,7 +54,7 @@ class IllinoisElectionScraper(scrapelib.Scraper):
                 yield url, response
             else :
                 blank_pages += 1
-                if blank_pages > 50 :
+                if blank_pages > 100 :
                     last = True
  
             id += 1
