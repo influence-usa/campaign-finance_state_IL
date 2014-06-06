@@ -1,3 +1,5 @@
 requests
 BeautifulSoup
 boto
+scrapelib
+lxml
