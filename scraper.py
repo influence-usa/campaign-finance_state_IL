@@ -150,17 +150,22 @@ def fetch_data(dl_type=None, **kwargs):
     dl_page = s.post(url, data=d)
     return dl_page.content
 
-def load(dl_type):
-    for year in range(1989, 2015):
+def load_disclosure(dl_type, start, end):
+    conn = S3Connection(AWS_KEY, AWS_SECRET)
+    bucket = conn.get_bucket('il-elections')
+    for year in range(start, end):
         start_date = '1/1/%s' % year
         end_date = '12/31/%s' % year
-        print 'Saving %s' % year
+        print 'Saving %s %s' % (year, dl_type)
         content = fetch_data(dl_type=dl_type, start_date=start_date, end_date=end_date)
-        conn = S3Connection(AWS_KEY, AWS_SECRET)
-        bucket = conn.get_bucket('il-elections')
         k = Key(bucket)
-        k.key = '%s_%s.tsv' % (year, dl_type.lower())
+        k.key = '%s/%s_%s.tsv' % (dl_type, year, dl_type.lower())
         k.set_contents_from_string(content)
         k.make_public()
     return None
 
+if __name__ == "__main__":
+    from datetime import datetime
+    this_year = datetime.now().year
+    for dl_type in ['Expenditures', 'Receipts']:
+        load_disclosure(dl_type, this_year, this_year + 1)
