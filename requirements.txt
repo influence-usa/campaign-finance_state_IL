@@ -3,3 +3,4 @@ BeautifulSoup
 boto
 scrapelib
 lxml
+csvkit

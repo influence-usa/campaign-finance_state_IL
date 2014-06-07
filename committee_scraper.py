@@ -239,10 +239,10 @@ class CandidateScraper(IllinoisElectionScraper):
 
 if __name__ == "__main__":
     from cStringIO import StringIO
-    import csv
     import os
     from boto.s3.connection import S3Connection
     from boto.s3.key import Key
+    from csvkit.unicsv import UnicodeCSVDictWriter
 
     AWS_KEY = os.environ['AWS_ACCESS_KEY']
     AWS_SECRET = os.environ['AWS_SECRET_KEY']
@@ -250,12 +250,12 @@ if __name__ == "__main__":
     url_pattern = '/CommitteeDetail.aspx?id=%s'
     string_on_page = 'ctl00_ContentPlaceHolder1_CommitteeResultsLayout'
     comm_scraper = CommitteeScraper(url_pattern=url_pattern, string_on_page=string_on_page)
-    comm_scraper.cache_storage = scrapelib.cache.FileCache('cache')
-    comm_scraper.cache_write_only = False
+    # comm_scraper.cache_storage = scrapelib.cache.FileCache('cache')
+    # comm_scraper.cache_write_only = False
     committees = []
     comms_outp = StringIO()
     comm_header = ['id', 'name', 'type', 'url', 'address', 'status', 'purpose', 'state_id', 'local_id']
-    comm_writer = csv.DictWriter(comms_outp, comm_header, delimiter='\t')
+    comm_writer = UnicodeCSVDictWriter(comms_outp, comm_header, delimiter='\t')
     comm_writer.writeheader()
     for committee in comm_scraper.scrape_all():
         # Save to DB and maybe write as JSON?
@@ -271,11 +271,11 @@ if __name__ == "__main__":
     # Now scrape Officer pages
     officer_pattern = '/CommitteeDetailOfficers.aspx?id=%s'
     officer_scraper = OfficerScraper(url_pattern=officer_pattern)
-    officer_scraper.cache_storage = scrapelib.cache.FileCache('cache')
-    officer_scraper.cache_write_only = False
+    # officer_scraper.cache_storage = scrapelib.cache.FileCache('cache')
+    # officer_scraper.cache_write_only = False
     officer_header = ['id', 'committee_id', 'name', 'title', 'address']
     officer_outp = StringIO()
-    officer_writer = csv.DictWriter(officer_outp, officer_header, delimiter='\t')
+    officer_writer = UnicodeCSVDictWriter(officer_outp, officer_header, delimiter='\t')
     officer_writer.writeheader()
     comm_ids = [c['id'] for c in committees]
     officers = []
