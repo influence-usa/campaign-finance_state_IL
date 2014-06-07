@@ -102,8 +102,6 @@ class CommitteeScraper(IllinoisElectionScraper):
             address = ' '.join([a for a in [add_el.text, add_el.tail] if a is not None]).strip()
             csz_el = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblCityStateZip"]')[0]
             city_st_zip = ' '.join([c for c in [csz_el.text, csz_el.tail] if c is not None]).strip()
-            print address
-            print city_st_zip
             data['address'] = '%s %s' % (address.strip(), city_st_zip.strip())
             data['status'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblStatus"]')[0].text
             data['purpose'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblPurpose"]')[0].text
