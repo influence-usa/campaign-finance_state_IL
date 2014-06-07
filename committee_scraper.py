@@ -54,7 +54,7 @@ class IllinoisElectionScraper(scrapelib.Scraper):
                 yield url, response
             else :
                 blank_pages += 1
-                if blank_pages > 100 :
+                if blank_pages > 3000 :
                     last = True
  
             id += 1
@@ -98,8 +98,12 @@ class CommitteeScraper(IllinoisElectionScraper):
             data['name'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblName"]')[0].text
             data['id'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblCommitteeID"]')[0].text.split(' ')[-1]
             data['url'] = self.url_pattern % data['id']
-            address = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblAddress"]')[0].text
-            city_st_zip = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblCityStateZip"]')[0].text
+            add_el = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblAddress"]')[0]
+            address = ' '.join([a for a in [add_el.text, add_el.tail] if a is not None]).strip()
+            csz_el = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblCityStateZip"]')[0]
+            city_st_zip = ' '.join([c for c in [csz_el.text, csz_el.tail] if c is not None]).strip()
+            print address
+            print city_st_zip
             data['address'] = '%s %s' % (address.strip(), city_st_zip.strip())
             data['status'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblStatus"]')[0].text
             data['purpose'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblPurpose"]')[0].text
