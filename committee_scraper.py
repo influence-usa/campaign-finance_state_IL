@@ -105,6 +105,7 @@ class CommitteeScraper(IllinoisElectionScraper):
             data['address'] = '%s %s' % (address.strip(), city_st_zip.strip())
             data['status'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblStatus"]')[0].text
             data['purpose'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblPurpose"]')[0].text
+            data['creation_date'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblCreationDate"]')[0].text
             ids = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblCommitteeIDs"]/text()')
             for i in ids:
                 if 'State' in i:
@@ -254,7 +255,7 @@ if __name__ == "__main__":
     # comm_scraper.cache_write_only = False
     committees = []
     comms_outp = StringIO()
-    comm_header = ['id', 'name', 'type', 'url', 'address', 'status', 'purpose', 'state_id', 'local_id']
+    comm_header = ['id', 'name', 'type', 'url', 'address', 'status', 'purpose', 'state_id', 'local_id', 'creation_date']
     comm_writer = UnicodeCSVDictWriter(comms_outp, comm_header, delimiter='\t')
     comm_writer.writeheader()
     for committee in comm_scraper.scrape_all():
