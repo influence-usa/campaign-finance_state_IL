@@ -168,4 +168,4 @@ if __name__ == "__main__":
     from datetime import datetime
     this_year = datetime.now().year
     for dl_type in ['Expenditures', 'Receipts']:
-        load_disclosure(dl_type, this_year, this_year + 1)
+        load_disclosure(dl_type, 1989, this_year + 1)
