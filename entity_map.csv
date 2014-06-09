@@ -1,6 +1,6 @@
-OCD-PersonID,ISBE ID Type,ISBE ID,Name,Address,Party,Office,District
-ocd-person/d7c7ec50-ae0d-11e3-bb35-1231380db829,Committee Officer,1,Robert V Shuff,"Rr 1 Auburn, IL 62615",,,
-ocd-person/d7c7ec50-ae0d-11e3-bb35-1231380db829,Committee Officer,2,Robert V Shuff,"Rr 1 Auburn, IL 62615",,,
-ocd-person/d7c7ec50-ae0d-11e3-bb35-1231380db829,Candidate,45,Robert V Shuff,"Rr 1 Auburn, IL 62615",Independent,Village Trustee/Westmont,Village
-ocd-person/asdf4da2-3123-5323-a234-164253244523,Candidate,23,Steve Hamlin,"123 Main St, IL 64045",Republican,Ward Committeeman/Chicago,Ward 47
+OCD-PersonID,ISBE ID Type,ISBE ID,Name,Address,Party,Office,District,Reason,Confidence,Reviewer
+ocd-person/d7c7ec50-ae0d-11e3-bb35-1231380db829,Committee Officer,1,Robert V Shuff,"Rr 1 Auburn, IL 62615",,,,Exact Match,.99
+ocd-person/d7c7ec50-ae0d-11e3-bb35-1231380db829,Committee Officer,2,Robert V Shuff,"Rr 1 Auburn, IL 62615",,,,Reviewed,NA,TJC
+ocd-person/d7c7ec50-ae0d-11e3-bb35-1231380db829,Candidate,45,Robert V Shuff,"123 R 1 Auburn, IL 62615",Independent,Village Trustee/Westmont,Village,Near Match,0.8
+ocd-person/asdf4da2-3123-5323-a234-164253244523,Candidate,23,Steve Hamlin,"123 Main St, IL 64045",Republican,Ward Committeeman/Chicago,Ward 47,,
 
