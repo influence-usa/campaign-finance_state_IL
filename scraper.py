@@ -199,8 +199,8 @@ if __name__ == "__main__":
         conn = S3Connection(AWS_KEY, AWS_SECRET)
         bucket = conn.get_bucket('il-elections')
         k = Key(bucket)
-        k.key = 'Committees/il_comms_%s.tsv' % (datetime.now().isoformat().split('.')[0])
-        k.set_contents_from_string(outp.getvalue())
+        k.key = 'Committees.tsv'
+        k.set_contents_from_file(outp)
         k.make_public()
 
     elif scrape_type == 'candidates':
@@ -236,6 +236,6 @@ if __name__ == "__main__":
         conn = S3Connection(AWS_KEY, AWS_SECRET)
         bucket = conn.get_bucket('il-elections')
         k = Key(bucket)
-        k.key = 'Candidates/il_cands_%s.csv' % (datetime.now().isoformat().split('.')[0])
-        k.set_contents_from_string(outp.getvalue())
+        k.key = 'Candidates.csv'
+        k.set_contents_from_file(outp)
         k.make_public()
