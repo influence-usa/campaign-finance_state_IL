@@ -48,23 +48,6 @@ class CommitteeScraper(IllinoisElectionScraper):
             data['type'] = page.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblTypeOfCommittee"]')[0].text
         return data
 
-class OfficerScraper(IllinoisElectionScraper):
-    
-    def scrape_one(self, comm_id):
-        url = self.url_pattern % comm_id
-        print url
-        officer_page = self._lxmlize(url)
-        rows = officer_page.xpath('//tr[starts-with(@class, "SearchListTableRow")]')
-        for row in rows:
-            officer_data = {}
-            id_sel = 'ctl00_ContentPlaceHolder1_OfficerNameRow'
-            officer_id = row.xpath('th[starts-with(@id, "%s")]' % id_sel)[0].attrib['id']
-            officer_data['id'] = officer_id.replace(id_sel, '')
-            officer_data['name'] = ' '.join(row.find('td[@class="tdOfficerName"]/').xpath('.//text()'))
-            officer_data['title'] = ' '.join(row.find('td[@class="tdOfficerTitle"]/').xpath('.//text()'))
-            officer_data['address'] = ' '.join(row.find('td[@class="tdOfficerAddress"]/').xpath('.//text()'))
-            yield officer_data
-
 if __name__ == "__main__":
     from cStringIO import StringIO
     import os
