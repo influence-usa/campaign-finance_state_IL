@@ -109,13 +109,18 @@ if __name__ == "__main__":
     import json
     from boto.s3.connection import S3Connection
     from boto.s3.key import Key
-    from csvkit.unicsv import UnicodeCSVDictWriter, UnicodeCSVDictReader
+    from csvkit.unicsv import UnicodeCSVDictWriter, UnicodeCSVDictReader, UnicodeCSVWriter
+    from csvkit.table import Table
+    from csvkit.sql import make_table, make_create_table_statement
     from itertools import groupby
     import scrapelib
+    import sqlite3
+    from dateutil import parser
 
     AWS_KEY = os.environ['AWS_ACCESS_KEY']
     AWS_SECRET = os.environ['AWS_SECRET_KEY']
-    
+    DB_NAME = 'reports.db'
+
     comm_pattern = 'http://www.elections.state.il.us/CampaignDisclosure/CommitteeDetail.aspx?id=%s'
     inp = StringIO()
     s3_conn = S3Connection(AWS_KEY, AWS_SECRET)
@@ -127,34 +132,53 @@ if __name__ == "__main__":
     reader = UnicodeCSVDictReader(inp, delimiter='\t')
     comm_urls = [comm_pattern % c['id'] for c in list(reader)]
 
-    # comm_urls = [comm_pattern % i for i in range(1,5)]
+    if os.path.exists(DB_NAME):
+        os.remove(DB_NAME)
     
     report_pattern = '/CommitteeDetail.aspx?id=%s&pageindex=%s'
     report_scraper = ReportScraper(url_pattern=report_pattern)
     # report_scraper.cache_storage = scrapelib.cache.FileCache('cache')
     # report_scraper.cache_write_only = False
-    reports = []
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
     for comm_url in comm_urls:
         for report_data in report_scraper.scrape_one(comm_url):
             comm_id = parse_qs(urlparse(comm_url).query)['id'][0]
             report_data['committee_id'] = comm_id
-            reports.append(report_data)
-    reports = sorted(reports, key=lambda x: x['date_filed'].year)
-    all_reports = {}
-    for dt,group in groupby(reports, key=lambda x: x['date_filed'].year):
-        gr_list = list(group)
-        for gr in gr_list:
-            for row_k,row_v in gr.items():
-                if isinstance(row_v, date) or isinstance(row_v, datetime):
-                    gr[row_k] = row_v.isoformat()
-        all_reports[dt] = gr_list
-    for dt, group in all_reports.items():
+            outp = StringIO()
+            writer = UnicodeCSVDictWriter(outp, fieldnames=report_data.keys())
+            writer.writeheader()
+            writer.writerow(report_data)
+            outp.seek(0)
+            t = Table.from_csv(outp, name='reports')
+            sql_table = make_table(t)
+            try:
+                c.execute('select * from reports limit 1')
+            except sqlite3.OperationalError:
+                create_st = make_create_table_statement(sql_table)
+                c.execute(create_st)
+                conn.commit()
+            insert = sql_table.insert()
+            headers = t.headers()
+            rows = [dict(zip(headers, row)) for row in t.to_rows()]
+            for row in rows:
+                c.execute(str(insert), row)
+            conn.commit()
+    c.execute('select date_filed from reports limit 1 order by date_filed')
+    oldest_year = parser.parse(c.fetchone()[0]).year
+    c.execute('select date_filed from reports limit 1 order by date_filed desc')
+    newest_year = parser.parse(c.fetchone()[0]).year
+    for year in range(oldest_year, newest_year + 1):
+        oldest_date = '%s-01-01' % year
+        newest_date = '%s-12-31' % year
+        c.execute('select * from reports where date_filed >= ? and date_filed <= ?', (oldest_date, newest_date))
+        rows = c.fetchall()
         outp = StringIO()
-        writer = UnicodeCSVDictWriter(outp, fieldnames=group[0].keys())
-        writer.writeheader()
-        writer.writerows(group)
+        writer = UnicodeCSVWriter(outp)
+        writer.writerow(headers)
+        writer.writerows(rows)
         outp.seek(0)
-        k.key = 'Reports/%s.csv' % dt
+        k.key = 'Reports/%s.csv' % year
         k.set_contents_from_file(outp)
         k.make_public()
 
