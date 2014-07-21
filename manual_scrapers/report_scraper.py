@@ -137,8 +137,8 @@ if __name__ == "__main__":
     
     report_pattern = '/CommitteeDetail.aspx?id=%s&pageindex=%s'
     report_scraper = ReportScraper(url_pattern=report_pattern)
-    # report_scraper.cache_storage = scrapelib.cache.FileCache('cache')
-    # report_scraper.cache_write_only = False
+    report_scraper.cache_storage = scrapelib.cache.FileCache('cache')
+    report_scraper.cache_write_only = False
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     for comm_url in comm_urls:
@@ -158,16 +158,23 @@ if __name__ == "__main__":
                 create_st = make_create_table_statement(sql_table)
                 c.execute(create_st)
                 conn.commit()
-            insert = sql_table.insert()
-            headers = t.headers()
-            rows = [dict(zip(headers, row)) for row in t.to_rows()]
-            for row in rows:
-                c.execute(str(insert), row)
-            conn.commit()
-    c.execute('select date_filed from reports limit 1 order by date_filed')
+            c.execute('select * from reports where id = ?', (int(report_data['id']),))
+            existing = c.fetchall()
+            if not existing:
+                insert = sql_table.insert()
+                headers = t.headers()
+                rows = [dict(zip(headers, row)) for row in t.to_rows()]
+                for row in rows:
+                    c.execute(str(insert), row)
+                conn.commit()
+            else:
+                print 'Already saved report %s' % report_data['detail_url']
+    c.execute('select date_filed from reports order by date_filed limit 1')
     oldest_year = parser.parse(c.fetchone()[0]).year
-    c.execute('select date_filed from reports limit 1 order by date_filed desc')
+    c.execute('select date_filed from reports order by date_filed desc limit 1')
     newest_year = parser.parse(c.fetchone()[0]).year
+    c.execute('select * from reports limit 1')
+    header = list(map(lambda x: x[0], c.description))
     for year in range(oldest_year, newest_year + 1):
         oldest_date = '%s-01-01' % year
         newest_date = '%s-12-31' % year
@@ -175,7 +182,7 @@ if __name__ == "__main__":
         rows = c.fetchall()
         outp = StringIO()
         writer = UnicodeCSVWriter(outp)
-        writer.writerow(headers)
+        writer.writerow(header)
         writer.writerows(rows)
         outp.seek(0)
         k.key = 'Reports/%s.csv' % year
