@@ -17,7 +17,6 @@ if __name__ == "__main__":
     with zipfile.ZipFile(outp, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
         for f in bucket.list():
             if not f.name.startswith('backups') and not f.name.endswith('/'):
-                print 'adding %s' % f.name
                 now = datetime.now().strftime('%Y-%m-%d')
                 info = zipfile.ZipInfo('%s/%s' % (zf_name, f.name))
                 info.external_attr = 0644 << 16L
