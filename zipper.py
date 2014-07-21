@@ -14,16 +14,24 @@ if __name__ == "__main__":
     outp = StringIO()
     now = datetime.now().strftime('%Y-%m-%d')
     zf_name = 'IL_Elections_%s' % now
-    with zipfile.ZipFile(outp, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(outp, mode='w') as zf:
         for f in bucket.list():
-            if not f.name.startswith('backups') and not f.name.endswith('/'):
+            if not f.name.startswith('backups') \
+                and not f.name.endswith('/') \
+                and not f.name.endswith('.zip'):
                 now = datetime.now().strftime('%Y-%m-%d')
-                info = zipfile.ZipInfo('%s/%s' % (zf_name, f.name))
-                info.external_attr = 0644 << 16L
-                zf.writestr(info, f.get_contents_as_string())
+                zf.writestr('%s/%s' % (zf_name, f.name), 
+                    f.get_contents_as_string(), 
+                    compress_type=zipfile.ZIP_DEFLATED)
+    with open('latest.zip', 'wb') as f:
+        f.write(outp.getvalue())
     k = Key(bucket)
     k.key = '%s.zip' % zf_name
-    k.set_contents_from_file(outp)
+    outp.seek(0)
+    k.set_contents_from_filename('latest.zip')
     k.make_public()
-   #with open('test.zip', 'wb') as f:
-   #    f.write(outp.getvalue())
+    bucket.copy_key(
+        'IL_Elections_latest.zip', 
+        'il-elections', 
+        '%s.zip' % zf_name,
+        preserve_acl=True)
