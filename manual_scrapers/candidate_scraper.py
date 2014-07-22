@@ -7,26 +7,33 @@ from cStringIO import StringIO
 from BeautifulSoup import BeautifulSoup
 from csvkit.unicsv import UnicodeCSVWriter, UnicodeCSVReader, \
     UnicodeCSVDictReader, UnicodeCSVDictWriter
+import scrapelib
 
 class CandidateScraper(IllinoisElectionScraper):
     
     def scrape_one(self, comm_id):
         url = self.url_pattern % comm_id
-        page = self._lxmlize(url)
-        table_rows = page.xpath('//tr[starts-with(@class, "SearchListTableRow")]')
-        for row in table_rows:
-            data = OrderedDict((
-                ('ID', ''),
-                ('FullName', ''),
-                ('FullAddress', ''),
-                ('PartyName', ''),
-                ('OfficeName', ''),
-            ))
-            name = row.xpath('//td[contains(@headers, "thCandidateName")]/a')[0]
+        try:
+            page = self._lxmlize(url)
+        except scrapelib.HTTPError:
+            yield None
+        data = OrderedDict((
+            ('ID', ''),
+            ('FullName', ''),
+            ('FullAddress', ''),
+            ('PartyName', ''),
+            ('OfficeName', ''),
+        ))
+        names = page.xpath('//td[@class="tdCandidateName"]/a')
+        for name in names:
             data['FullName'] = name.text_content()
             detail_url = name.attrib['href']
             if detail_url:
-                detail_page = self._lxmlize(detail_url)
+                print detail_url
+                try:
+                    detail_page = self._lxmlize(detail_url)
+                except scrapelib.HTTPError:
+                    yield None
                 header_box = detail_page.xpath('//table[@summary="Candidate Detail Table"]')[0]
                 address = header_box.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblAddress"]')
                 if address:
@@ -111,32 +118,41 @@ if __name__ == "__main__":
     AWS_KEY = os.environ['AWS_ACCESS_KEY']
     AWS_SECRET = os.environ['AWS_SECRET_KEY']
     DB_NAME = 'candidates.db'
+    
+   #create_table = 'CREATE TABLE candidates (\
+   #    "ID" INTEGER,\
+   #    "BracketID" INTEGER,\
+   #    "SlateID" INTEGER,\
+   #    "LastName" VARCHAR(24),\
+   #    "FirstName" VARCHAR(27),\
+   #    "AffilCommit" VARCHAR(13),\
+   #    "HeadOfSlate" BOOLEAN,\
+   #    "Address1" VARCHAR(35),\
+   #    "Address2" VARCHAR(35),\
+   #    "City" VARCHAR(19),\
+   #    "State" VARCHAR(4),\
+   #    "Zip" VARCHAR(10),\
+   #    "FileDateTime" DATETIME,\
+   #    "Sequence" INTEGERL,\
+   #    "Status" VARCHAR(1),\
+   #    "StatusDateTime" DATETIME,\
+   #    "WebSiteAddress" VARCHAR(75),\
+   #    "ElectionDate" DATE,\
+   #    "ElectionType" VARCHAR(2),\
+   #    "PartyName" VARCHAR(34),\
+   #    "PartySequence" INTEGER,\
+   #    "OfficeName" VARCHAR(84),\
+   #    "OfficeBallotGroup" VARCHAR(2),\
+   #    "OfficeSequence" INTEGER,\
+   #    "FullName" VARCHAR(32),\
+   #    "FullAddress" VARCHAR(32)\
+   #)'
 
     create_table = 'CREATE TABLE candidates (\
         "ID" INTEGER,\
-        "BracketID" INTEGER,\
-        "SlateID" INTEGER,\
-        "LastName" VARCHAR(24),\
-        "FirstName" VARCHAR(27),\
-        "AffilCommit" VARCHAR(13),\
-        "HeadOfSlate" BOOLEAN,\
-        "Address1" VARCHAR(35),\
-        "Address2" VARCHAR(35),\
-        "City" VARCHAR(19),\
-        "State" VARCHAR(4),\
-        "Zip" VARCHAR(10),\
-        "FileDateTime" DATETIME,\
-        "Sequence" INTEGERL,\
-        "Status" VARCHAR(1),\
-        "StatusDateTime" DATETIME,\
-        "WebSiteAddress" VARCHAR(75),\
-        "ElectionDate" DATE,\
-        "ElectionType" VARCHAR(2),\
+        "CommitteeID" INTEGER,\
         "PartyName" VARCHAR(34),\
-        "PartySequence" INTEGER,\
         "OfficeName" VARCHAR(84),\
-        "OfficeBallotGroup" VARCHAR(2),\
-        "OfficeSequence" INTEGER,\
         "FullName" VARCHAR(32),\
         "FullAddress" VARCHAR(32)\
     )'
@@ -144,26 +160,26 @@ if __name__ == "__main__":
     if os.path.exists('candidates.db'):
         os.remove('candidates.db')
 
-    header, cands_by_election = scrape_by_election()
+   #header, cands_by_election = scrape_by_election()
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(create_table)
     conn.commit()
-    for row in cands_by_election:
-        c.execute('insert into candidates ("ID","BracketID","SlateID",\
-            "LastName","FirstName","AffilCommit","HeadOfSlate","Address1",\
-            "Address2","City","State","Zip","FileDateTime","Sequence",\
-            "Status","StatusDateTime","WebSiteAddress","ElectionDate",\
-            "ElectionType","PartyName","PartySequence","OfficeName",\
-            "OfficeBallotGroup","OfficeSequence","FullName","FullAddress")\
-            values(:ID,:BracketID,:SlateID,\
-            :LastName,:FirstName,:AffilCommit,:HeadOfSlate,:Address1,\
-            :Address2,:City,:State,:Zip,:FileDateTime,:Sequence,\
-            :Status,:StatusDateTime,:WebSiteAddress,:ElectionDate,\
-            :ElectionType,:PartyName,:PartySequence,:OfficeName,\
-            :OfficeBallotGroup,:OfficeSequence,:FullName,:FullAddress)',
-            {k:v for k,v in zip(header, row)})
-        conn.commit()
+   #for row in cands_by_election:
+   #    c.execute('insert into candidates ("ID","BracketID","SlateID",\
+   #        "LastName","FirstName","AffilCommit","HeadOfSlate","Address1",\
+   #        "Address2","City","State","Zip","FileDateTime","Sequence",\
+   #        "Status","StatusDateTime","WebSiteAddress","ElectionDate",\
+   #        "ElectionType","PartyName","PartySequence","OfficeName",\
+   #        "OfficeBallotGroup","OfficeSequence","FullName","FullAddress")\
+   #        values(:ID,:BracketID,:SlateID,\
+   #        :LastName,:FirstName,:AffilCommit,:HeadOfSlate,:Address1,\
+   #        :Address2,:City,:State,:Zip,:FileDateTime,:Sequence,\
+   #        :Status,:StatusDateTime,:WebSiteAddress,:ElectionDate,\
+   #        :ElectionType,:PartyName,:PartySequence,:OfficeName,\
+   #        :OfficeBallotGroup,:OfficeSequence,:FullName,:FullAddress)',
+   #        {k:v for k,v in zip(header, row)})
+   #    conn.commit()
 
     inp = StringIO()
     s3_conn = S3Connection(AWS_KEY, AWS_SECRET)
@@ -177,10 +193,16 @@ if __name__ == "__main__":
 
     candidate_pattern = '/CommitteeDetailCandidates.aspx?id=%s'
     cand_scraper = CandidateScraper(url_pattern=candidate_pattern)
+    cand_scraper.cache_storage = scrapelib.cache.FileCache('cache')
+    cand_scraper.cache_write_only = False
     for comm_id in comm_ids:
         for cand in cand_scraper.scrape_one(comm_id):
-            insert = 'insert into candidates("ID", "FullName", "FullAddress", \
-                "PartyName", "OfficeName") values (:ID, :FullName, :FullAddress, \
-                :PartyName, :OfficeName)'
-            c.execute(insert, cand)
-            conn.commit()
+            if cand:
+                cand['CommitteeID'] = comm_id
+                insert = 'insert into candidates("ID", "FullName", "FullAddress", \
+                    "PartyName", "OfficeName", "CommitteeID") values (:ID, :FullName, :FullAddress, \
+                    :PartyName, :OfficeName, :CommitteeID)'
+                c.execute(insert, cand)
+                conn.commit()
+            else:
+                print 'Got a 500 for %s' % comm_id
