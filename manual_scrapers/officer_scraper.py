@@ -31,20 +31,20 @@ if __name__ == "__main__":
     s3_conn = S3Connection(AWS_KEY, AWS_SECRET)
     bucket = s3_conn.get_bucket('il-elections')
     k = Key(bucket)
-    k.key = 'Committees.tsv'
+    k.key = 'Committees.csv'
     committee_file = k.get_contents_to_file(inp)
     inp.seek(0)
-    reader = UnicodeCSVDictReader(inp, delimiter='\t')
+    reader = UnicodeCSVDictReader(inp)
     comm_ids = [c['id'] for c in list(reader)]
     
     # Now scrape Officer pages
     officer_pattern = '/CommitteeDetailOfficers.aspx?id=%s'
     officer_scraper = OfficerScraper(url_pattern=officer_pattern)
-    # officer_scraper.cache_storage = scrapelib.cache.FileCache('cache')
-    # officer_scraper.cache_write_only = False
+    officer_scraper.cache_storage = scrapelib.cache.FileCache('/cache/cache')
+    officer_scraper.cache_write_only = False
     officer_header = ['id', 'committee_id', 'name', 'title', 'address']
     officer_outp = StringIO()
-    officer_writer = UnicodeCSVDictWriter(officer_outp, officer_header, delimiter='\t')
+    officer_writer = UnicodeCSVDictWriter(officer_outp, officer_header)
     officer_writer.writeheader()
     officers = []
     for comm_id in comm_ids:
@@ -52,7 +52,7 @@ if __name__ == "__main__":
             officer['committee_id'] = comm_id
             officers.append(officer)
     officer_writer.writerows(officers)
-    k.key = 'Officers.tsv'
+    k.key = 'Officers.csv'
     k.set_contents_from_string(officer_outp.getvalue())
     k.make_public()
 

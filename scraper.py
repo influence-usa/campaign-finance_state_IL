@@ -192,14 +192,14 @@ if __name__ == "__main__":
             if comm not in no_dup_comms:
                 no_dup_comms.append(comm)
         outp = StringIO()
-        writer = csv.writer(outp, delimiter='\t')
+        writer = csv.writer(outp)
         writer.writerow(header)
         writer.writerows(no_dup_comms)
         outp.seek(0)
         conn = S3Connection(AWS_KEY, AWS_SECRET)
         bucket = conn.get_bucket('il-elections')
         k = Key(bucket)
-        k.key = 'Committees.tsv'
+        k.key = 'Committees.csv'
         k.set_contents_from_file(outp)
         k.make_public()
 

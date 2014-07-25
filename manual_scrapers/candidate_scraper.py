@@ -33,24 +33,26 @@ class CandidateScraper(IllinoisElectionScraper):
                 try:
                     detail_page = self._lxmlize(detail_url)
                 except scrapelib.HTTPError:
+                    detail_page = None
                     yield None
-                header_box = detail_page.xpath('//table[@summary="Candidate Detail Table"]')[0]
-                address = header_box.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblAddress"]')
-                if address:
-                    a = lxml.html.tostring(address[0])
-                    l_idx = a.find('>')
-                    r_idx = a.find('</')
-                    add_parts = a[l_idx + 1:r_idx].split('<br>')
-                    data['FullAddress'] = ' '.join([a.strip() for a in add_parts])
-                party = header_box.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblParty"]')
-                if party:
-                    data['PartyName'] = party[0].text_content().strip()
-                office = header_box.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblOffice"]')
-                if office:
-                    data['OfficeName'] = office[0].text_content().strip()
-                parsed = urlparse(detail_url)
-                data['ID'] = parse_qs(parsed.query)['id'][0]
-                yield data
+                if detail_page:
+                    header_box = detail_page.xpath('//table[@summary="Candidate Detail Table"]')[0]
+                    address = header_box.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblAddress"]')
+                    if address:
+                        a = lxml.html.tostring(address[0])
+                        l_idx = a.find('>')
+                        r_idx = a.find('</')
+                        add_parts = a[l_idx + 1:r_idx].split('<br>')
+                        data['FullAddress'] = ' '.join([a.strip() for a in add_parts])
+                    party = header_box.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblParty"]')
+                    if party:
+                        data['PartyName'] = party[0].text_content().strip()
+                    office = header_box.xpath('//span[@id="ctl00_ContentPlaceHolder1_lblOffice"]')
+                    if office:
+                        data['OfficeName'] = office[0].text_content().strip()
+                    parsed = urlparse(detail_url)
+                    data['ID'] = parse_qs(parsed.query)['id'][0]
+                    yield data
 
 def fetch_data(election_id):
     s = Session()
@@ -111,43 +113,12 @@ if __name__ == "__main__":
     import os
     from boto.s3.connection import S3Connection
     from boto.s3.key import Key
-    from csvkit.table import Table
-    from csvkit.sql import make_table, make_create_table_statement
     import sqlite3
 
     AWS_KEY = os.environ['AWS_ACCESS_KEY']
     AWS_SECRET = os.environ['AWS_SECRET_KEY']
-    DB_NAME = 'candidates.db'
+    DB_NAME = '/cache/candidates.db'
     
-   #create_table = 'CREATE TABLE candidates (\
-   #    "ID" INTEGER,\
-   #    "BracketID" INTEGER,\
-   #    "SlateID" INTEGER,\
-   #    "LastName" VARCHAR(24),\
-   #    "FirstName" VARCHAR(27),\
-   #    "AffilCommit" VARCHAR(13),\
-   #    "HeadOfSlate" BOOLEAN,\
-   #    "Address1" VARCHAR(35),\
-   #    "Address2" VARCHAR(35),\
-   #    "City" VARCHAR(19),\
-   #    "State" VARCHAR(4),\
-   #    "Zip" VARCHAR(10),\
-   #    "FileDateTime" DATETIME,\
-   #    "Sequence" INTEGERL,\
-   #    "Status" VARCHAR(1),\
-   #    "StatusDateTime" DATETIME,\
-   #    "WebSiteAddress" VARCHAR(75),\
-   #    "ElectionDate" DATE,\
-   #    "ElectionType" VARCHAR(2),\
-   #    "PartyName" VARCHAR(34),\
-   #    "PartySequence" INTEGER,\
-   #    "OfficeName" VARCHAR(84),\
-   #    "OfficeBallotGroup" VARCHAR(2),\
-   #    "OfficeSequence" INTEGER,\
-   #    "FullName" VARCHAR(32),\
-   #    "FullAddress" VARCHAR(32)\
-   #)'
-
     create_table = 'CREATE TABLE candidates (\
         "ID" INTEGER,\
         "CommitteeID" INTEGER,\
@@ -160,40 +131,24 @@ if __name__ == "__main__":
     if os.path.exists('candidates.db'):
         os.remove('candidates.db')
 
-   #header, cands_by_election = scrape_by_election()
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(create_table)
     conn.commit()
-   #for row in cands_by_election:
-   #    c.execute('insert into candidates ("ID","BracketID","SlateID",\
-   #        "LastName","FirstName","AffilCommit","HeadOfSlate","Address1",\
-   #        "Address2","City","State","Zip","FileDateTime","Sequence",\
-   #        "Status","StatusDateTime","WebSiteAddress","ElectionDate",\
-   #        "ElectionType","PartyName","PartySequence","OfficeName",\
-   #        "OfficeBallotGroup","OfficeSequence","FullName","FullAddress")\
-   #        values(:ID,:BracketID,:SlateID,\
-   #        :LastName,:FirstName,:AffilCommit,:HeadOfSlate,:Address1,\
-   #        :Address2,:City,:State,:Zip,:FileDateTime,:Sequence,\
-   #        :Status,:StatusDateTime,:WebSiteAddress,:ElectionDate,\
-   #        :ElectionType,:PartyName,:PartySequence,:OfficeName,\
-   #        :OfficeBallotGroup,:OfficeSequence,:FullName,:FullAddress)',
-   #        {k:v for k,v in zip(header, row)})
-   #    conn.commit()
 
     inp = StringIO()
     s3_conn = S3Connection(AWS_KEY, AWS_SECRET)
     bucket = s3_conn.get_bucket('il-elections')
     k = Key(bucket)
-    k.key = 'Committees.tsv'
+    k.key = 'Committees.csv'
     committee_file = k.get_contents_to_file(inp)
     inp.seek(0)
-    reader = UnicodeCSVDictReader(inp, delimiter='\t')
+    reader = UnicodeCSVDictReader(inp)
     comm_ids = [i['id'] for i in list(reader)]
 
     candidate_pattern = '/CommitteeDetailCandidates.aspx?id=%s'
     cand_scraper = CandidateScraper(url_pattern=candidate_pattern)
-    cand_scraper.cache_storage = scrapelib.cache.FileCache('cache')
+    cand_scraper.cache_storage = scrapelib.cache.FileCache('/cache/cache')
     cand_scraper.cache_write_only = False
     for comm_id in comm_ids:
         for cand in cand_scraper.scrape_one(comm_id):
@@ -206,3 +161,15 @@ if __name__ == "__main__":
                 conn.commit()
             else:
                 print 'Got a 500 for %s' % comm_id
+    c.execute('select * from candidates')
+    header = list(map(lambda x: x[0], c.description))
+    cands = c.fetchall()
+    outp = StringIO()
+    writer = UnicodeCSVWriter(outp)
+    writer.writerow(header)
+    writer.writerows(cands)
+    outp.seek(0)
+    k.key = 'Candidates.csv'
+    k.set_contents_from_file(outp)
+    k.make_public()
+
