@@ -23,6 +23,7 @@ if __name__ == "__main__":
     from boto.s3.connection import S3Connection
     from boto.s3.key import Key
     from csvkit.unicsv import UnicodeCSVDictWriter, UnicodeCSVDictReader
+    import scrapelib
 
     AWS_KEY = os.environ['AWS_ACCESS_KEY']
     AWS_SECRET = os.environ['AWS_SECRET_KEY']
