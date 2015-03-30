@@ -14,12 +14,12 @@ class IllinoisElectionScraper(scrapelib.Scraper):
         self.base_url = 'http://www.elections.state.il.us/CampaignDisclosure'
         self.url_pattern = self.base_url + url_pattern
         self.string_on_page = string_on_page
-        super(IllinoisElectionScraper, self).__init__(raise_errors,
-                                            requests_per_minute,
-                                            follow_robots,
-                                            retry_attempts,
-                                            retry_wait_seconds,
-                                            header_func)
+        super(IllinoisElectionScraper, self).__init__(raise_errors=raise_errors,
+                                                      requests_per_minute=requests_per_minute,
+                                                      follow_robots=follow_robots,
+                                                      retry_attempts=retry_attempts,
+                                                      retry_wait_seconds=retry_wait_seconds,
+                                                      header_func=header_func)
 
     def scrape_all(self):
         for url, page in self._generate_pages():

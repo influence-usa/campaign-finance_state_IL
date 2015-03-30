@@ -25,6 +25,8 @@ if __name__ == "__main__":
     from csvkit.unicsv import UnicodeCSVDictWriter, UnicodeCSVDictReader
     import scrapelib
 
+    cache_dir = '/cache/cache'
+
     AWS_KEY = os.environ['AWS_ACCESS_KEY']
     AWS_SECRET = os.environ['AWS_SECRET_KEY']
 
@@ -41,7 +43,7 @@ if __name__ == "__main__":
     # Now scrape Officer pages
     officer_pattern = '/CommitteeDetailOfficers.aspx?id=%s'
     officer_scraper = OfficerScraper(url_pattern=officer_pattern)
-    officer_scraper.cache_storage = scrapelib.cache.FileCache('/cache/cache')
+    officer_scraper.cache_storage = scrapelib.cache.FileCache(cache_dir)
     officer_scraper.cache_write_only = False
     officer_header = ['id', 'committee_id', 'name', 'title', 'address']
     officer_outp = StringIO()

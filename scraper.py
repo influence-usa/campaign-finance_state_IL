@@ -8,8 +8,8 @@ from cStringIO import StringIO
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
-AWS_KEY = os.environ['AWS_ACCESS_KEY']
-AWS_SECRET = os.environ['AWS_SECRET_KEY']
+AWS_KEY = os.environ.get('AWS_ACCESS_KEY')
+AWS_SECRET = os.environ.get('AWS_SECRET_KEY')
 
 CONT_GET_PARAMS = {
     'AddressSearchType': 'Starts with',
@@ -127,6 +127,7 @@ def fetch_data(dl_type=None, **kwargs):
         'ctl00$AccordionPaneStateBoardMenu_content$AccordionMainContent_AccordionExtender_ClientState': '-1',
         'hiddenInputToUpdateATBuffer_CommonToolkitScripts': '1',
         '__EVENTARGUMENT': '',
+        '__VIEWSTATEGENERATOR': 'E8D1F59A'
     }
     if dl_type == 'Receipts':
         CONT_GET_PARAMS['RcvDate'] = kwargs['start_date']
@@ -140,8 +141,10 @@ def fetch_data(dl_type=None, **kwargs):
         EXP_GET_PARAMS['ExpendedDateThru'] = kwargs['end_date']
         url = '%s/DownloadList.aspx?%s' % (BASE_URL, urlencode(EXP_GET_PARAMS))
     elif dl_type == 'Candidates':
-      url = 'http://www.elections.state.il.us/ElectionInformation/CandDataFile.aspx?id=%s' % kwargs['election_id']
+        url = 'http://www.elections.state.il.us/ElectionInformation/CandDataFile.aspx?id=%s' % kwargs['election_id']
     g = s.get(url)
+    if 'Unexpected errors occurred trying to populate page' in g.content:
+        return None
     soup = BeautifulSoup(g.content)
     view_state = soup.find('input', attrs={'id': '__VIEWSTATE'}).get('value')
     event_val = soup.find('input', attrs={'id': '__EVENTVALIDATION'}).get('value')
@@ -154,18 +157,25 @@ def fetch_data(dl_type=None, **kwargs):
         return None
 
 def load_disclosure(dl_type, start, end):
-    conn = S3Connection(AWS_KEY, AWS_SECRET)
-    bucket = conn.get_bucket('il-elections')
     for year in range(start, end):
         start_date = '1/1/%s' % year
         end_date = '12/31/%s' % year
         print 'Saving %s %s' % (year, dl_type)
         content = fetch_data(dl_type=dl_type, start_date=start_date, end_date=end_date)
+        write_contents('%s/%s_%s.tsv' % (dl_type, year, dl_type.lower()), content)
+    return None
+
+def write_contents(keyname, content):
+    if AWS_KEY and AWS_SECRET:
+        conn = S3Connection(AWS_KEY, AWS_SECRET)
+        bucket = conn.get_bucket('il-elections')
         k = Key(bucket)
-        k.key = '%s/%s_%s.tsv' % (dl_type, year, dl_type.lower())
+        k.key = keyname
         k.set_contents_from_string(content)
         k.make_public()
-    return None
+    else:
+        with open(keyname, 'wb') as f:
+            f.write(contents)
 
 if __name__ == "__main__":
     import sys
@@ -196,12 +206,7 @@ if __name__ == "__main__":
         writer.writerow(header)
         writer.writerows(no_dup_comms)
         outp.seek(0)
-        conn = S3Connection(AWS_KEY, AWS_SECRET)
-        bucket = conn.get_bucket('il-elections')
-        k = Key(bucket)
-        k.key = 'Committees.csv'
-        k.set_contents_from_file(outp)
-        k.make_public()
+        write_contents('Committees.csv', outp.getvalue())
 
     elif scrape_type == 'candidates':
         id = 1
@@ -211,8 +216,7 @@ if __name__ == "__main__":
         last = False
         while not last:
             cand_info = fetch_data(dl_type='Candidates', election_id=id)
-            if not cand_info \
-                or 'Unexpected errors occurred trying to populate page.' in cand_info:
+            if not cand_info:
                 blank += 1
                 if blank > 20:
                     last = True
@@ -233,9 +237,4 @@ if __name__ == "__main__":
         writer.writerow(header)
         writer.writerows(all_cands)
         outp.seek(0)
-        conn = S3Connection(AWS_KEY, AWS_SECRET)
-        bucket = conn.get_bucket('il-elections')
-        k = Key(bucket)
-        k.key = 'Candidates.csv'
-        k.set_contents_from_file(outp)
-        k.make_public()
+        write_contents('Candidates.csv', outp.getvalue())

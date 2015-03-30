@@ -116,10 +116,12 @@ if __name__ == "__main__":
     import scrapelib
     import sqlite3
     from dateutil import parser
+    
+    cache_dir = '/cache/cache'
 
     AWS_KEY = os.environ['AWS_ACCESS_KEY']
     AWS_SECRET = os.environ['AWS_SECRET_KEY']
-    DB_NAME = '/cache/reports.db'
+    DB_NAME = os.path.join(cache_dir, 'reports.db')
 
     comm_pattern = 'http://www.elections.state.il.us/CampaignDisclosure/CommitteeDetail.aspx?id=%s'
     inp = StringIO()
@@ -137,7 +139,7 @@ if __name__ == "__main__":
     
     report_pattern = '/CommitteeDetail.aspx?id=%s&pageindex=%s'
     report_scraper = ReportScraper(url_pattern=report_pattern)
-    report_scraper.cache_storage = scrapelib.cache.FileCache('/cache/cache')
+    report_scraper.cache_storage = scrapelib.cache.FileCache(cache_dir)
     report_scraper.cache_write_only = False
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
